@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hub Simulateurs</title>
+  <style>
+    :root {
+      --bg: #05070d;
+      --bg2: #0a1020;
+      --panel: #0f1628cf;
+      --line: #2a4169;
+      --text: #eaf0ff;
+      --muted: #9db0d6;
+      --cta1: #39d1ba;
+      --cta2: #4f8fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, #14284a 0%, transparent 28%),
+        radial-gradient(circle at 82% 12%, rgba(78, 233, 255, 0.22) 0%, rgba(78, 233, 255, 0.12) 14%, rgba(78, 233, 255, 0.04) 30%, transparent 55%),
+        radial-gradient(circle at 74% 76%, #0f2a36 0%, transparent 23%),
+        linear-gradient(165deg, var(--bg), var(--bg2));
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 24px auto;
+      padding: 16px;
+    }
+    h1 {
+      margin: 4px 0 8px;
+      font-size: clamp(1.5rem, 2.8vw, 2.2rem);
+    }
+    .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 14px;
+      backdrop-filter: blur(2px);
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+    .card p {
+      margin: 0 0 12px;
+      color: #c9d8fb;
+      line-height: 1.45;
+    }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      border: 1px solid #4f86c6;
+      color: #fff;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--cta1), var(--cta2));
+    }
+    .ghost {
+      opacity: 0.82;
+      border-style: dashed;
+      border-color: #3d5789;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Mes Simulateurs</h1>
+    <p class="sub">Hub principal pour lancer tous tes outils de simulation financière.</p>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Calculette de rêves</h2>
+        <p>Objectifs, poches financières, intérêts composés, suivi d’atteinte et projection dans le temps.</p>
+        <a class="btn" href="./simulateurs/calculette-reves.html">Ouvrir le simulateur</a>
+      </article>
+
+      <article class="card ghost">
+        <h2>Prochain simulateur</h2>
+        <p>Espace réservé pour ton prochain outil (ex: FIRE, emprunt, budget retraite, etc.).</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
