@@ -317,7 +317,7 @@
 <body>
   <div class="stars"></div>
   <main class="wrap">
-    <a class="hub-link" href="../index.html">← Retour au hub</a>
+    <a class="hub-link" id="hubLink" href="../index.html">← Retour au hub</a>
     <h1>Calculette de rêves</h1>
 
     <div class="tabs">
@@ -733,7 +733,6 @@
         });
         let totalValue = states.reduce((a, s) => a + s.value, 0);
 
-        // Activation dans l'ordre des échéances.
         while (nextGoalIndex < achievements.length) {
           const g = achievements[nextGoalIndex];
           if (m < g.deadlineMonth) break;
@@ -748,7 +747,6 @@
           nextGoalIndex += 1;
         }
 
-        // Déduction récurrente des objectifs actifs (mensuel/annuel).
         activeGoals.forEach((g) => {
           if (g.achievedMonth === null || m === g.achievedMonth) return;
           const recurringCost = getGoalMonthlyCostAt(g, m, g.achievedMonth);
@@ -756,7 +754,6 @@
           withdrawFromStates(states, recurringCost);
         });
 
-        // Nettoyage objectifs terminés.
         for (let i = activeGoals.length - 1; i >= 0; i--) {
           const g = activeGoals[i];
           if (g.durationYears === Infinity) continue;
@@ -776,7 +773,7 @@
     function withdrawFromStates(states, amount) {
       let remaining = Math.max(0, amount);
       if (!remaining) return;
-      // 1) On consomme d'abord les gains (partie rose): value - base.
+
       const gains = states.map((s) => Math.max(0, s.value - s.base));
       const totalGains = gains.reduce((a, g) => a + g, 0);
       if (totalGains > 0) {
@@ -791,7 +788,6 @@
           s.value -= take;
           remaining -= take;
         });
-        // rattrapage d'arrondi
         if (remaining > 0) {
           for (let i = 0; i < states.length && remaining > 0; i++) {
             const extraGain = Math.max(0, states[i].value - states[i].base);
@@ -803,7 +799,6 @@
         }
       }
 
-      // 2) Si gains épuisés, on consomme le capital (vert-bleu): base.
       if (remaining > 0) {
         const totalBase = states.reduce((a, s) => a + Math.max(0, s.base), 0);
         if (totalBase <= 0) return;
@@ -816,7 +811,6 @@
           s.value -= take;
           remaining -= take;
         });
-        // rattrapage d'arrondi
         if (remaining > 0) {
           for (const s of states) {
             if (remaining <= 0) break;
@@ -828,7 +822,6 @@
         }
       }
 
-      // protection contre les flottants négatifs
       states.forEach((s) => {
         s.base = Math.max(0, s.base);
         s.value = Math.max(0, s.value);
@@ -843,235 +836,9 @@
         return month < startMonth + maxMonths ? goal.amount : 0;
       }
       if (goal.frequency === "annuel") {
-        if (!Number.isFinite(goal.durationYears)) {
-          return ((month - startMonth) % 12 === 0) ? goal.amount : 0;
-        }
+        if (!Number.isFinite(goal.durationYears)) return ((month - startMonth) % 12 === 0) ? goal.amount : 0;
         const maxYears = Math.round(goal.durationYears);
         const elapsed = month - startMonth;
         if (elapsed < 0 || elapsed >= maxYears * 12) return 0;
         return (elapsed % 12 === 0) ? goal.amount : 0;
-      }
-      return 0;
-    }
-
-    function getGoalTarget(goal) {
-      if (goal.frequency === "one-shot") return goal.amount;
-      if (goal.frequency === "annuel") {
-        if (!Number.isFinite(goal.durationYears)) return goal.amount * goal.deadlineYears;
-        return goal.amount * goal.durationYears;
-      }
-      if (!Number.isFinite(goal.durationYears)) return goal.amount * 12 * goal.deadlineYears;
-      return goal.amount * 12 * goal.durationYears;
-    }
-
-    function drawChart() {
-      const canvas = byId("chart");
-      const ctx = canvas.getContext("2d");
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      const cssW = canvas.clientWidth;
-      const cssH = canvas.clientHeight;
-      canvas.width = Math.floor(cssW * dpr);
-      canvas.height = Math.floor(cssH * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      ctx.clearRect(0, 0, cssW, cssH);
-      const pad = { l: 54, r: 18, t: 16, b: 36 };
-      const w = cssW - pad.l - pad.r;
-      const h = cssH - pad.t - pad.b;
-
-      const months = getSmartHorizonMonths();
-      const { points, achievements } = simulate(months, goals);
-      const rawMax = Math.max(1000, ...points.map((p) => Math.max(p.base, p.value)));
-      const maxVal = getYAxisMax(rawMax);
-
-      const x = (m) => pad.l + (m / months) * w;
-      const y = (v) => pad.t + h - (v / maxVal) * h;
-
-      ctx.strokeStyle = "#1c2f4f";
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const gy = pad.t + (h * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(pad.l, gy);
-        ctx.lineTo(pad.l + w, gy);
-        ctx.stroke();
-      }
-      for (let i = 0; i <= 5; i++) {
-        const gx = pad.l + (w * i) / 5;
-        ctx.beginPath();
-        ctx.moveTo(gx, pad.t);
-        ctx.lineTo(gx, pad.t + h);
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = "#c6d6ff";
-      ctx.font = "12px Trebuchet MS";
-      for (let i = 0; i <= 4; i++) {
-        const val = maxVal * (1 - i / 4);
-        ctx.fillText(fmtEur.format(val), 6, pad.t + (h * i) / 4 + 4);
-      }
-      for (let i = 0; i <= 5; i++) {
-        const m = Math.round((months * i) / 5);
-        const years = (m / 12).toFixed(1);
-        ctx.fillText(`${years} a`, pad.l + (w * i) / 5 - 10, pad.t + h + 18);
-      }
-
-      ctx.beginPath();
-      points.forEach((p, i) => {
-        const xx = x(p.month);
-        const yy = y(p.base);
-        if (i === 0) ctx.moveTo(xx, yy);
-        else ctx.lineTo(xx, yy);
-      });
-      ctx.lineTo(x(points[points.length - 1].month), y(0));
-      ctx.lineTo(x(points[0].month), y(0));
-      ctx.closePath();
-      const baseFill = ctx.createLinearGradient(pad.l, pad.t, pad.l + w, pad.t + h);
-      baseFill.addColorStop(0, getCssVar("--base-fill-a"));
-      baseFill.addColorStop(1, getCssVar("--base-fill-b"));
-      ctx.fillStyle = baseFill;
-      ctx.fill();
-
-      ctx.beginPath();
-      points.forEach((p, i) => {
-        const xx = x(p.month);
-        const yy = y(p.base);
-        if (i === 0) ctx.moveTo(xx, yy);
-        else ctx.lineTo(xx, yy);
-      });
-      const gradBase = ctx.createLinearGradient(pad.l, 0, pad.l + w, 0);
-      gradBase.addColorStop(0, getCssVar("--base"));
-      gradBase.addColorStop(1, getCssVar("--base2"));
-      ctx.strokeStyle = gradBase;
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      ctx.beginPath();
-      points.forEach((p, i) => {
-        const xx = x(p.month);
-        const yy = y(p.value);
-        if (i === 0) ctx.moveTo(xx, yy);
-        else ctx.lineTo(xx, yy);
-      });
-      for (let i = points.length - 1; i >= 0; i--) {
-        const p = points[i];
-        ctx.lineTo(x(p.month), y(p.base));
-      }
-      ctx.closePath();
-      const interestFill = ctx.createLinearGradient(pad.l, pad.t, pad.l + w, pad.t + h);
-      interestFill.addColorStop(0, getCssVar("--interest-fill-a"));
-      interestFill.addColorStop(1, getCssVar("--interest-fill-b"));
-      ctx.fillStyle = interestFill;
-      ctx.fill();
-
-      ctx.beginPath();
-      points.forEach((p, i) => {
-        const xx = x(p.month);
-        const yy = y(p.value);
-        if (i === 0) ctx.moveTo(xx, yy);
-        else ctx.lineTo(xx, yy);
-      });
-      const gradInterest = ctx.createLinearGradient(pad.l, 0, pad.l + w, 0);
-      gradInterest.addColorStop(0, getCssVar("--interest"));
-      gradInterest.addColorStop(1, getCssVar("--interest-dark"));
-      ctx.strokeStyle = gradInterest;
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      achievements.filter((a) => a.achievedMonth !== null && a.achievedMonth <= months).forEach((a) => {
-        const month = a.achievedMonth;
-        if (month === null) return;
-        const pt = points[Math.max(0, Math.min(month, points.length - 1))];
-        const xx = x(month);
-        const yy = y(pt.value);
-        drawStar(ctx, xx, yy, 8, 5, 0.5);
-        ctx.fillStyle = getCssVar("--star");
-        ctx.font = "12px Trebuchet MS";
-        const label = a.title.length > 14 ? `${a.title.slice(0, 14)}…` : a.title;
-        ctx.fillText(label, xx + 8, yy - 8);
-      });
-
-      renderResultNote(achievements, months, points);
-    }
-
-    function getYAxisMax(rawMax) {
-      if (rawMax <= 0) return 1000;
-      const step = 10000;
-      return Math.max(1000, Math.ceil(rawMax / step) * step);
-    }
-
-    function getSmartHorizonMonths() {
-      const maxPocketMonths = pockets.length
-        ? Math.max(...pockets.map((p) => Math.round(p.duringYears * 12)))
-        : 0;
-      if (maxPocketMonths > 0) return Math.max(12, maxPocketMonths);
-      // Fallback tant qu'aucune poche n'est définie.
-      const maxGoalMonths = goals.length
-        ? Math.max(...goals.map((g) => Math.round(g.deadlineYears * 12)))
-        : 12;
-      return Math.max(12, maxGoalMonths);
-    }
-
-    function renderResultNote(achievements, horizonMonths, points) {
-      if (!achievements.length) {
-        resultNote.className = "result-note";
-        resultNote.textContent = "";
-        return;
-      }
-
-      const delayedOrMissed = achievements.filter((a) => a.achievedMonth === null || a.achievedMonth > a.deadlineMonth);
-      if (!delayedOrMissed.length) {
-        resultNote.className = "result-note ok";
-        resultNote.textContent = "BRAVO tu peux réaliser tes rêves.";
-        return;
-      }
-
-      const ext = simulate(Math.max(horizonMonths + 1200, 1200), goals);
-      const details = delayedOrMissed.map((g) => {
-        const extGoal = ext.achievements.find((a) => a.id === g.id);
-        const lateMonth = extGoal?.achievedMonth ?? null;
-        if (lateMonth === null) return `${g.title}: pas atteignable sur 100 ans.`;
-        const planned = (g.deadlineMonth / 12).toFixed(1);
-        const actual = (lateMonth / 12).toFixed(1);
-        return `${g.title}: possible vers ${actual} ans au lieu de ${planned} ans.`;
-      });
-
-      resultNote.className = "result-note warn";
-      resultNote.textContent = `Certains objectifs sont hors délai. ${details.join(" ")}`;
-    }
-
-    function drawStar(ctx, cx, cy, outerR, spikes, innerScale) {
-      let rot = (Math.PI / 2) * 3;
-      let xPos = cx;
-      let yPos = cy;
-      const step = Math.PI / spikes;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - outerR);
-      for (let i = 0; i < spikes; i++) {
-        xPos = cx + Math.cos(rot) * outerR;
-        yPos = cy + Math.sin(rot) * outerR;
-        ctx.lineTo(xPos, yPos);
-        rot += step;
-        xPos = cx + Math.cos(rot) * outerR * innerScale;
-        yPos = cy + Math.sin(rot) * outerR * innerScale;
-        ctx.lineTo(xPos, yPos);
-        rot += step;
-      }
-      ctx.lineTo(cx, cy - outerR);
-      ctx.closePath();
-      ctx.fillStyle = getCssVar("--star");
-      ctx.shadowColor = "#ffcb7a";
-      ctx.shadowBlur = 8;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    function getCssVar(name) {
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    }
-
-    window.addEventListener("resize", drawChart);
-    drawChart();
-  </script>
-</body>
-</html>
+     
