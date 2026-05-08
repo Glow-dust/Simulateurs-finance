@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Achat vs Location</title>
+  <style>
+    :root {
+      --bg: #05070d;
+      --bg2: #0a0f1c;
+      --panel: #0f1628cc;
+      --line: #22324f;
+      --text: #e8eeff;
+      --muted: #9db0d6;
+      --buy: #36d0b7;
+      --buy2: #4f8fff;
+      --rent: #ff5cc7;
+      --rent2: #7d1038;
+      --star: #ffb347;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 20%, #0e1c3d 0%, transparent 25%),
+        radial-gradient(circle at 82% 12%, rgba(78, 233, 255, 0.22) 0%, rgba(78, 233, 255, 0.12) 14%, rgba(78, 233, 255, 0.04) 30%, transparent 55%),
+        radial-gradient(circle at 70% 75%, #0f2a36 0%, transparent 20%),
+        linear-gradient(160deg, var(--bg), var(--bg2));
+    }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 14px; }
+    .hub-link {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: #9ddcff;
+      text-decoration: none;
+      border: 1px solid #365988;
+      border-radius: 7px;
+      padding: 6px 10px;
+      background: #0a1730b8;
+    }
+    h1 { margin: 6px 0 14px; font-size: clamp(1.35rem, 2.5vw, 2rem); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 1.02rem; }
+    .field { margin-bottom: 8px; }
+    label { display: block; margin-bottom: 4px; color: #cfe0ff; font-size: 0.86rem; }
+    input {
+      width: 100%;
+      border: 1px solid #3b5484;
+      background: #0a1327;
+      color: #fff;
+      border-radius: 7px;
+      padding: 8px;
+      font-size: 0.95rem;
+    }
+    .chart-panel {
+      margin-top: 12px;
+      border: 1px solid #30466f;
+      border-radius: 10px;
+      background: #091326d6;
+      padding: 10px;
+    }
+    .legend { color: #d9e4ff; font-size: 0.9rem; display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+    .d-buy { background: linear-gradient(90deg, var(--buy), var(--buy2)); }
+    .d-rent { background: linear-gradient(90deg, var(--rent), var(--rent2)); }
+    .d-star { background: var(--star); }
+    canvas {
+      width: 100%;
+      height: min(52vh, 460px);
+      border-radius: 8px;
+      border: 1px solid #27406b;
+      background: linear-gradient(180deg, #050913 0%, #070f1f 100%);
+      display: block;
+    }
+    .out { margin-top: 8px; font-size: 0.95rem; color: #dce8ff; }
+    .tip {
+      position: fixed;
+      pointer-events: none;
+      transform: translate(10px, -10px);
+      border: 1px solid #365988;
+      background: #081426f0;
+      color: #e8f1ff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      line-height: 1.35;
+      z-index: 20;
+      display: none;
+      white-space: nowrap;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <a class="hub-link" id="hubLink" href="../index.html">← Retour au hub</a>
+    <h1>Achat résidence principale vs Location</h1>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Achat</h2>
+        <div class="field"><label for="buyPrice">Montant du bien (travaux initiaux compris) (€)</label><input id="buyPrice" type="number" min="0" step="1000" /></div>
+        <div class="field"><label for="acqFees">Frais d'acquisition (frais d'agence et de notaire) (€)</label><input id="acqFees" type="number" min="0" step="1000" /></div>
+        <div class="field"><label for="downPayment">Apport du crédit (€)</label><input id="downPayment" type="number" min="0" step="1000" /></div>
+        <div class="field"><label for="loanRate">TAEG (avec assurance) (%)</label><input id="loanRate" type="number" min="0" step="0.01" /></div>
+        <div class="field"><label for="loanDuration">Durée (années)</label><input id="loanDuration" type="number" min="1" step="1" /></div>
+        <div class="field"><label for="monthlyPayment">Mensualités (€)</label><input id="monthlyPayment" type="number" min="0" step="10" placeholder="calcul auto quand les champs crédit sont remplis" /></div>
+        <div class="field"><label for="annualOwnerCosts">Coût d'entretien, d'assurance et taxe foncière / an (€)</label><input id="annualOwnerCosts" type="number" min="0" step="100" /></div>
+        <div class="field"><label for="marketGrowth">Evolution du marché (%)</label><input id="marketGrowth" type="number" step="0.1" value="1.5" /></div>
+      </div>
+
+      <div class="panel">
+        <h2>Location</h2>
+        <div class="field"><label for="rentMonthly">Loyer HC / mois (€)</label><input id="rentMonthly" type="number" min="0" step="10" /></div>
+        <div class="field"><label for="rentInsurance">Montant assurance / mois (€)</label><input id="rentInsurance" type="number" min="0" step="5" value="50" /></div>
+        <div class="field"><label for="expectedReturn">Rentabilité annuelle attendue de l'argent non dépensé (%)</label><input id="expectedReturn" type="number" step="0.1" value="5" /></div>
+      </div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="legend">
+        <span><i class="dot d-buy"></i>Achat (patrimoine net)</span>
+        <span><i class="dot d-rent"></i>Location (capital investi)</span>
+        <span><i class="dot d-star"></i>Sweet spot</span>
+      </div>
+      <canvas id="chart" width="1100" height="460"></canvas>
+      <p class="out" id="output"></p>
+    </section>
+  </main>
+  <div id="tip" class="tip"></div>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+    const ids = [
+      "buyPrice","acqFees","downPayment","loanRate","loanDuration","monthlyPayment",
+      "annualOwnerCosts","marketGrowth","rentMonthly","rentInsurance","expectedReturn"
+    ];
+    ids.forEach((id) => byId(id).addEventListener("input", onInput));
+    const tip = byId("tip");
+    let lastPoints = [];
+    let lastYears = 1;
+    let lastPad = null;
+    let lastCanvasW = 1;
+
+    function onInput(e) {
+      if (e && e.target && e.target.id === "annualOwnerCosts") {
+        byId("annualOwnerCosts").dataset.userEdited = "1";
+      }
+      if (e && e.target && e.target.id === "buyPrice") {
+        const ownerCosts = byId("annualOwnerCosts");
+        if (!ownerCosts.dataset.userEdited) {
+          const price = toNum(byId("buyPrice").value);
+          ownerCosts.value = Number.isFinite(price) && price > 0 ? Math.round(price * 0.01) : "";
+        }
+      }
+      recomputeMonthlyPayment();
+      draw();
+    }
+
+    function toNum(value) {
+      if (value === null || value === undefined) return NaN;
+      const cleaned = String(value).trim().replace(",", ".");
+      return Number(cleaned);
+    }
+
+    function recomputeMonthlyPayment() {
+      const monthlyInput = byId("monthlyPayment");
+      const buyPrice = toNum(byId("buyPrice").value);
+      const acqFees = toNum(byId("acqFees").value);
+      const downPayment = toNum(byId("downPayment").value);
+      const loanRatePct = toNum(byId("loanRate").value);
+      const durationYears = toNum(byId("loanDuration").value);
+
+      if (!Number.isFinite(buyPrice) || !Number.isFinite(acqFees) || !Number.isFinite(downPayment) || !Number.isFinite(loanRatePct) || !Number.isFinite(durationYears)) return;
+      if (buyPrice <= 0 || durationYears <= 0) return;
+
+      // Base de crédit: prix + frais d'acquisition/travaux - apport.
+      const principal = buyPrice + acqFees - downPayment;
+      if (principal <= 0) return;
+
+      const n = Math.round(durationYears * 12);
+      if (n <= 0) return;
+
+      const monthlyRate = Math.pow(1 + loanRatePct / 100, 1 / 12) - 1;
+      let payment = 0;
+      if (monthlyRate === 0) payment = principal / n;
+      else payment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -n));
+      if (Number.isFinite(payment) && payment > 0) monthlyInput.value = Math.round(payment);
+    }
+
+    function resolveHubUrl() {
+      if (location.protocol === "file:") return "../index.html";
+      const parts = location.pathname.split("/").filter(Boolean);
+      const i = parts.indexOf("simulateurs");
+      if (i > 0) return `/${parts.slice(0, i).join("/")}/index.html`;
+      if (i === 0) return "/index.html";
+      return "../index.html";
+    }
+    byId("hubLink").setAttribute("href", resolveHubUrl());
+
+    function simulate(years) {
+      const buyPrice = toNum(byId("buyPrice").value) || 0;
+      const acqFees = toNum(byId("acqFees").value) || 0;
+      const downPayment = toNum(byId("downPayment").value) || 0;
+      const loanRate = (toNum(byId("loanRate").value) || 0) / 100;
+      const loanDurationYears = toNum(byId("loanDuration").value) || 1;
+      const monthlyPayment = toNum(byId("monthlyPayment").value) || 0;
+      const annualOwnerCosts = toNum(byId("annualOwnerCosts").value) || 0;
+      const marketGrowth = (toNum(byId("marketGrowth").value) || 0) / 100;
+
+      const rentMonthly = toNum(byId("rentMonthly").value) || 0;
+      const rentInsurance = toNum(byId("rentInsurance").value) || 0;
+      const expectedReturn = (toNum(byId("expectedReturn").value) || 0) / 100;
+
+      const monthlyLoanRate = Math.pow(1 + loanRate, 1 / 12) - 1;
+      const loanMonths = Math.max(1, Math.round(loanDurationYears * 12));
+
+      let loanBalance = Math.max(0, buyPrice + acqFees - downPayment);
+      let homeValue = buyPrice;
+      let cumOwnerCosts = 0;
+      let rentInvested = Math.max(0, downPayment);
+      const points = [{ year: 0, buy: downPayment, rent: rentInvested }];
+
+      for (let y = 1; y <= years; y++) {
+        let principalYear = 0;
+        for (let k = 1; k <= 12; k++) {
+          const m = (y - 1) * 12 + k;
+          if (m > loanMonths || loanBalance <= 0) continue;
+          const interest = loanBalance * monthlyLoanRate;
+          const principal = Math.max(0, monthlyPayment - interest);
+          principalYear += principal;
+          loanBalance = Math.max(0, loanBalance - principal);
+        }
+        homeValue *= (1 + marketGrowth);
+        cumOwnerCosts += annualOwnerCosts;
+
+        // Achat (patrimoine réel): valeur du bien - capital restant dû - coûts cumulés.
+        const buyNet = homeValue - loanBalance - cumOwnerCosts;
+
+        // Location: (mensualité prêt annualisée + coûts annuels) - (loyer+assurance annualisés), placé au rendement attendu
+        const ownerAnnual = (monthlyPayment * 12) + annualOwnerCosts;
+        const renterAnnual = (rentMonthly * 12) + (rentInsurance * 12);
+        const annualToInvest = ownerAnnual - renterAnnual;
+        rentInvested = (rentInvested + annualToInvest) * (1 + expectedReturn);
+
+        points.push({ year: y, buy: buyNet, rent: rentInvested });
+      }
+      return points;
+    }
+
+    function draw() {
+      const duration = Number(byId("loanDuration").value) || 25;
+      const years = Math.max(1, Math.round(duration));
+      const points = simulate(years);
+      lastPoints = points;
+      lastYears = years;
+      const canvas = byId("chart");
+      const ctx = canvas.getContext("2d");
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { l: 60, r: 18, t: 18, b: 36 };
+      lastPad = pad;
+      const cw = w - pad.l - pad.r;
+      lastCanvasW = w;
+      const ch = h - pad.t - pad.b;
+      const rawMax = Math.max(...points.map((p) => Math.max(p.buy, p.rent)));
+      const rawMin = Math.min(...points.map((p) => Math.min(p.buy, p.rent)));
+      const yMax = Math.ceil(Math.max(1000, rawMax) / 10000) * 10000;
+      const yMin = Math.floor(Math.min(0, rawMin) / 10000) * 10000;
+      const ySpan = Math.max(1, yMax - yMin);
+
+      const x = (yr) => pad.l + (yr / years) * cw;
+      const y = (v) => pad.t + ch - ((v - yMin) / ySpan) * ch;
+
+      ctx.strokeStyle = "#1c2f4f";
+      for (let i = 0; i <= 4; i++) {
+        const gy = pad.t + (ch * i) / 4;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + cw, gy); ctx.stroke();
+      }
+      for (let i = 0; i <= 5; i++) {
+        const gx = pad.l + (cw * i) / 5;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ch); ctx.stroke();
+      }
+
+      ctx.fillStyle = "#c6d6ff";
+      ctx.font = "12px Trebuchet MS";
+      for (let i = 0; i <= 4; i++) {
+        const val = yMin + (ySpan * (1 - i / 4));
+        ctx.fillText(fmt.format(val), 8, pad.t + (ch * i) / 4 + 4);
+      }
+      for (let yr = 0; yr <= years; yr++) {
+        const xx = x(yr);
+        if (years > 20 && yr % 2 !== 0) continue;
+        ctx.fillText(`${yr} a`, xx - (yr >= 10 ? 10 : 6), pad.t + ch + 18);
+      }
+
+      const buyGrad = ctx.createLinearGradient(pad.l, 0, pad.l + cw, 0);
+      buyGrad.addColorStop(0, getVar("--buy"));
+      buyGrad.addColorStop(1, getVar("--buy2"));
+      ctx.beginPath();
+      points.forEach((p, i) => i ? ctx.lineTo(x(p.year), y(p.buy)) : ctx.moveTo(x(p.year), y(p.buy)));
+      ctx.strokeStyle = buyGrad; ctx.lineWidth = 3; ctx.stroke();
+
+      const rentGrad = ctx.createLinearGradient(pad.l, 0, pad.l + cw, 0);
+      rentGrad.addColorStop(0, getVar("--rent"));
+      rentGrad.addColorStop(1, getVar("--rent2"));
+      ctx.beginPath();
+      points.forEach((p, i) => i ? ctx.lineTo(x(p.year), y(p.rent)) : ctx.moveTo(x(p.year), y(p.rent)));
+      ctx.strokeStyle = rentGrad; ctx.lineWidth = 3; ctx.stroke();
+
+      let sweet = null;
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const dPrev = prev.buy - prev.rent;
+        const dCurr = curr.buy - curr.rent;
+        // Croisement réel: on passe de "location devant" à "achat devant".
+        if (dPrev < 0 && dCurr >= 0) {
+          const t = (0 - dPrev) / (dCurr - dPrev || 1);
+          const year = prev.year + t * (curr.year - prev.year);
+          const buy = prev.buy + t * (curr.buy - prev.buy);
+          sweet = { year, buy };
+          break;
+        }
+      }
+
+      const out = byId("output");
+      if (sweet) {
+        drawStar(ctx, x(sweet.year), y(sweet.buy), 8);
+        out.textContent = `Sweet spot: acheter devient plus intéressant à partir de ~${sweet.year.toFixed(1)} ans.`;
+      } else {
+        out.textContent = `Pas de sweet spot sur ${years} ans: la location reste devant sur cet horizon.`;
+      }
+    }
+
+    function drawStar(ctx, cx, cy, outerR) {
+      let rot = (Math.PI / 2) * 3;
+      const step = Math.PI / 5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - outerR);
+      for (let i = 0; i < 5; i++) {
+        ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+        rot += step;
+        ctx.lineTo(cx + Math.cos(rot) * outerR * 0.5, cy + Math.sin(rot) * outerR * 0.5);
+        rot += step;
+      }
+      ctx.closePath();
+      ctx.fillStyle = getVar("--star");
+      ctx.shadowColor = "#ffcb7a";
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function getVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    (function init() {
+      const price = toNum(byId("buyPrice").value);
+      const ownerCosts = byId("annualOwnerCosts");
+      ownerCosts.value = Number.isFinite(price) && price > 0 ? Math.round(price * 0.01) : "";
+      draw();
+      window.addEventListener("resize", draw);
+    })();
+
+    byId("chart").addEventListener("mousemove", (e) => {
+      if (!lastPoints.length || !lastPad) return;
+      const rect = e.target.getBoundingClientRect();
+      const xPx = e.clientX - rect.left;
+      const plotW = lastCanvasW - lastPad.l - lastPad.r;
+      if (xPx < lastPad.l || xPx > lastPad.l + plotW) {
+        tip.style.display = "none";
+        return;
+      }
+      const year = ((xPx - lastPad.l) / plotW) * lastYears;
+      const idx = Math.max(0, Math.min(lastPoints.length - 1, Math.round(year)));
+      const p = lastPoints[idx];
+      tip.innerHTML = `Année: <b>${p.year}</b><br/>Achat: <b>${fmt.format(p.buy)}</b><br/>Location: <b>${fmt.format(p.rent)}</b>`;
+      tip.style.left = `${e.clientX}px`;
+      tip.style.top = `${e.clientY}px`;
+      tip.style.display = "block";
+    });
+    byId("chart").addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  </script>
+</body>
+</html>
+```
