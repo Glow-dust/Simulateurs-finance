@@ -203,12 +203,12 @@
     }
 
     function resolveHubUrl() {
-      if (location.protocol === "file:") return "../index.html";
+      if (location.protocol === "file:") return "index.html";
       const parts = location.pathname.split("/").filter(Boolean);
       const i = parts.indexOf("simulateurs");
       if (i > 0) return `/${parts.slice(0, i).join("/")}/index.html`;
-      if (i === 0) return "/index.html";
-      return "../index.html";
+      if (i === 0) return "index.html";
+      return "index.html";
     }
     byId("hubLink").setAttribute("href", resolveHubUrl());
 
